@@ -1,12 +1,12 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start"
+    "start": "next start -p 3001"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.28.1-beta.1",
+    "@coral-xyz/anchor": "^0.29.0",
     "@heroicons/react": "^2.0.18",
     "@nextui-org/react": "^2.0.8",
     "@solana/wallet-adapter-base": "^0.9.23",
@@ -15,9 +15,10 @@
     "@solana/wallet-adapter-wallets": "^0.19.23",
     "@solana/web3.js": "^1.73.2",
     "autoprefixer": "^10.4.14",
+    "bs58": "^4.0.1",
     "encoding": "^0.1.13",
     "next": "latest",
-    "@openbook-dex/openbook-v2": "0.0.18",
+    "@openbook-dex/openbook-v2": "0.2.10",
     "postcss": "^8.4.27",
     "react": "18.2.0",
     "react-dom": "18.2.0",

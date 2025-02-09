@@ -16,6 +16,7 @@ import { BN } from "@coral-xyz/anchor";
 
 import { LinkIcon } from "@heroicons/react/24/outline";
 import {
+  Market,
   MarketAccount,
   nameToString,
   priceLotsToUi,
@@ -25,6 +26,7 @@ import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ButtonState } from "../components/Button";
 import { toast } from "react-hot-toast";
+import { getLeafNodes } from "../utils/utils";
 
 function priceData(key) {
   const shiftedValue = key.shrn(64); // Shift right by 64 bits
@@ -78,9 +80,10 @@ export default function Home() {
   ];
 
   const openbookClient = useOpenbookClient();
+  const provider = openbookClient.provider;
 
   useEffect(() => {
-    fetchData()
+    fetchData(provider)
       .then((res) => {
         setMarkets(res);
         fetchMarket(res[0].market);
@@ -100,19 +103,24 @@ export default function Home() {
 
   const fetchMarket = async (key: string) => {
     const market = await getMarket(openbookClient, key);
-    setMarket(market);
+    setMarket(market.account);
     setMarketPubkey(new PublicKey(key));
 
-    const booksideAsks = await openbookClient.getBookSide(market.asks);
-    const booksideBids = await openbookClient.getBookSide(market.bids);
+    
+    const booksideAsks = await market.loadAsks();
+    const booksideBids = await market.loadBids();
     if (booksideAsks === null || booksideBids === null) return;
-    const asks = openbookClient.getLeafNodes(booksideAsks).sort((a, b) => {
+    console.log("booksideAsks.account",booksideAsks.account)
+    console.log("booksideBids.account",booksideBids.account)
+
+    const asks = getLeafNodes(openbookClient.program,booksideAsks.account).sort((a, b) => {
       const priceA = priceData(a.key);
       const priceB = priceData(b.key);
       return priceB - priceA;
-    });
+    }) ;
     setAsks(asks);
-    const bids = openbookClient.getLeafNodes(booksideBids).sort((a, b) => {
+    const bids = getLeafNodes(openbookClient.program,booksideBids.account).sort((a, b) => {
+      console.log("booksideBids.account.roots",booksideBids.account.roots)
       const priceA = priceData(a.key);
       const priceB = priceData(b.key);
       return priceB - priceA;
@@ -138,12 +146,14 @@ export default function Home() {
     console.log("accountsToConsume", accountsToConsume);
 
     if (accountsToConsume.length > 0) {
-      const tx = await openbookClient.consumeEvents(
+      const ix = await openbookClient.consumeEventsIx(
         marketPubkey,
         market,
         new BN(5),
         accountsToConsume
       );
+
+      const tx = await openbookClient.sendAndConfirmTransaction([ix]);
       console.log("consume events tx", tx);
       toast("Consume events tx: " + tx.toString());
     }
