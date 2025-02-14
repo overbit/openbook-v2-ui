@@ -7,7 +7,7 @@ import {
   TableCell,
   getKeyValue,
 } from "@nextui-org/react";
-import { priceLotsToUi } from "@openbook-dex/openbook-v2";
+import { Order, priceLotsToUi } from "@openbook-dex/openbook-v2";
 import { PublicKey } from "@solana/web3.js";
 
 const columnsBook = [
@@ -24,34 +24,19 @@ const columnsBook = [
     label: "PRICE",
   },
 ];
-interface Order {
-  owner: PublicKey;
-  quantity: any;
-  key: any;
-}
 
 interface OrderBookProps {
   asks: Order[];
   bids: Order[];
   market: any;
 }
-function priceData(key: any): number {
-  const shiftedValue = key.shrn(64); // Shift right by 64 bits
-  return shiftedValue.toNumber(); // Convert BN to a regular number
-}
 
 export default function OrderBook({ asks, bids, market }: OrderBookProps) {
-  function priceDataToUI(key: any) {
-    const shiftedValue = key.shrn(64); // Shift right by 64 bits
-    const priceLots = shiftedValue.toNumber(); // Convert BN to a regular number
-
-    return priceLotsToUi(market, priceLots);
-  }
   return (
     <div className=" h-[26.5vh]">
       <div>
         <h3 className="text-center mt-8 mb-5 text-2xl text-title-text font-bold ">
-          OrderBook
+        ASKS -------- OrderBook -------- BIDS
         </h3>
       </div>
       <div className="grid grid-cols-2 gap-2 border-t border-gray-800 overflow-y-scroll h-full	">
@@ -59,7 +44,7 @@ export default function OrderBook({ asks, bids, market }: OrderBookProps) {
           <Table
             isStriped
             selectionMode="single"
-            aria-label="OrderBook"
+            aria-label="ASKS -------- OrderBook -------- BIDS"
             className="border-r border-gray-800  min-h-[100%]"
           >
             <TableHeader className="text-left" columns={columnsBook}>
@@ -74,21 +59,21 @@ export default function OrderBook({ asks, bids, market }: OrderBookProps) {
             </TableHeader>
             <TableBody items={asks}>
               {(item) => (
-                <TableRow key={priceData(item.key)}>
-                  {(columnKey) => (
-                    <TableCell>
-                      {columnKey == "owner"
-                        ? getKeyValue(item, columnKey)
-                            .toString()
-                            .substring(0, 4) +
-                          ".." +
-                          getKeyValue(item, columnKey).toString().slice(-4)
-                        : columnKey == "quantity"
-                        ? getKeyValue(item, columnKey).toString()
-                        : priceDataToUI(item.key)}
-                    </TableCell>
-                  )}
-                </TableRow>
+                <TableRow key={item.price}>
+                                  {(columnKey) => (
+                                    <TableCell>
+                                      {columnKey == "owner"
+                                        ? item.leafNode.owner
+                                            .toString()
+                                            .substring(0, 4) +
+                                          ".." +
+                                          item.leafNode.owner.toString().slice(-4)
+                                        : columnKey == "quantity"
+                                        ? item.size.toString()
+                                        : item.price}
+                                    </TableCell>
+                                  )}
+                                </TableRow>
               )}
             </TableBody>
           </Table>
@@ -108,21 +93,21 @@ export default function OrderBook({ asks, bids, market }: OrderBookProps) {
             </TableHeader>
             <TableBody items={bids}>
               {(item) => (
-                <TableRow key={priceData(item.key)}>
-                  {(columnKey) => (
-                    <TableCell>
-                      {columnKey == "owner"
-                        ? getKeyValue(item, columnKey)
-                            .toString()
-                            .substring(0, 4) +
-                          ".." +
-                          getKeyValue(item, columnKey).toString().slice(-4)
-                        : columnKey == "quantity"
-                        ? getKeyValue(item, columnKey).toString()
-                        : priceDataToUI(item.key)}
-                    </TableCell>
-                  )}
-                </TableRow>
+               <TableRow key={item.price}>
+                                 {(columnKey) => (
+                                   <TableCell>
+                                     {columnKey == "owner"
+                                       ? item.leafNode.owner
+                                           .toString()
+                                           .substring(0, 4) +
+                                         ".." +
+                                         item.leafNode.owner.toString().slice(-4)
+                                       : columnKey == "quantity"
+                                       ? item.size.toString()
+                                       : item.price}
+                                   </TableCell>
+                                 )}
+                               </TableRow>
               )}
             </TableBody>
           </Table>

@@ -26,6 +26,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { ButtonState } from "../components/Button";
 import { toast } from "react-hot-toast";
 import { getBooksideOrders } from "../utils/utils";
+import MarketDetail from "../components/MarketDetail";
+import MarketTable from "../components/MarketTable";
+import OrderBook from "../components/OrderBook";
 
 export default function Home() {
   const { publicKey, signTransaction, connected, wallet } = useWallet();
@@ -156,151 +159,23 @@ export default function Home() {
       </Head>
 
       <div className="w-full h-full relative ">
-        <div className="flex flex-col gap-3 pb-2.5">
-          <Table
-            isStriped
-            selectionMode="single"
-            aria-label="Markets"
-            onRowAction={async (key) => fetchMarket(key.toString())}
-          >
-            <TableHeader columns={columns}>
-              {(column) => (
-                <TableColumn key={column.key}>{column.label}</TableColumn>
-              )}
-            </TableHeader>
-            <TableBody items={markets}>
-              {(item) => (
-                <TableRow key={item.market}>
-                  {(columnKey) => (
-                    <TableCell>
-                      {columnKey == "name"
-                        ? getKeyValue(item, columnKey)
-                        : linkedPk(getKeyValue(item, columnKey))}
-                    </TableCell>
-                  )}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {market.asks ? (
-          <div>
-            <div className="grid grid-cols-3 gap-2 text-center border-r-4 border-b-4 border-l-4">
-              <div className="">
-                <p className="font-bold">Name </p>
-                {market.asks ? nameToString(market.name) : ""}
-                <p className="font-bold">Base Mint </p>
-                {market.asks ? market.baseMint.toString() : ""}
-                <p className="font-bold">Quote Mint </p>
-                {market.asks ? market.quoteMint.toString() : ""}
-                <p className="font-bold">Bids </p>
-                {market.asks ? market.bids.toString() : ""}
-                <p className="font-bold">Asks </p>
-                {market.asks ? market.asks.toString() : ""}
-                <p className="font-bold">Event Heap </p>
-                {market.asks ? market.eventHeap.toString() : ""}
-              </div>
-
-              <div className="">
-                <p className="font-bold">Base Deposits </p>
-                {market.asks ? market.baseDepositTotal.toString() : ""}
-                <p className="font-bold">Quote Deposits </p>
-                {market.asks ? market.quoteDepositTotal.toString() : ""}
-                <p className="font-bold">Taker Fees </p>
-                {market.asks ? market.takerFee.toString() : ""}
-                <p className="font-bold">Maker Fees </p>
-                {market.asks ? market.makerFee.toString() : ""}
-                <p className="font-bold">Base Lot Size </p>
-                {market.asks ? market.baseLotSize.toString() : ""}
-                <p className="font-bold">Quote Lot Size </p>
-                {market.asks ? market.quoteLotSize.toString() : ""}
-                <p className="font-bold">Base Decimals </p>
-                {market.asks ? market.baseDecimals : ""}
-                <p className="font-bold">Quote Decimals </p>
-                {market.asks ? market.quoteDecimals : ""}
-              </div>
-              <div className="">
-                <p className="font-bold">Best Ask </p>
-                {bestAsk ? bestAsk?.price : ""}
-                <p className="font-bold">Best Bid </p>
-                {bestBid ? bestBid?.price : "NA"}
-              </div>
-            </div>
-
-            <button
-              className="items-center text-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-              onClick={(e: any) => crankMarket()}
-            >
-              CRANK
-            </button>
-
-            <div>
-              <h3 className="text-center mt-8 mb-5 text-xl">
-                ASKS -------- The Book -------- BIDS
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 border-2">
-              <Table isStriped selectionMode="single" aria-label="OrderBook">
-                <TableHeader className="text-left" columns={columnsBook}>
-                  {(column) => (
-                    <TableColumn key={column.key}>{column.label}</TableColumn>
-                  )}
-                </TableHeader>
-                <TableBody items={asks}>
-                  {(item) => (
-                    <TableRow key={item.price}>
-                      {(columnKey) => (
-                        <TableCell>
-                          {columnKey == "owner"
-                            ? item.leafNode.owner
-                                .toString()
-                                .substring(0, 4) +
-                              ".." +
-                              item.leafNode.owner.toString().slice(-4)
-                            : columnKey == "quantity"
-                            ? item.size.toString()
-                            : item.price}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-
-              <Table isStriped selectionMode="single" aria-label="OrderBook">
-                <TableHeader columns={columnsBook}>
-                  {(column) => (
-                    <TableColumn key={column.key}>{column.label}</TableColumn>
-                  )}
-                </TableHeader>
-                <TableBody items={bids}>
-                {(item) => (
-                    <TableRow key={item.price}>
-                      {(columnKey) => (
-                        <TableCell>
-                          {columnKey == "owner"
-                            ? item.leafNode.owner
-                                .toString()
-                                .substring(0, 4) +
-                              ".." +
-                              item.leafNode.owner.toString().slice(-4)
-                            : columnKey == "quantity"
-                            ? item.size.toString()
-                            : item.price}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        ) : (
-          <h1 className="text-center">This market has been closed!</h1>
-        )}
-
+      {MarketTable({columns, fetchMarket, markets})}
+        
+        
+       
+      <div> 
+        { market.asks? 
+          MarketDetail({market} 
+          ): <h1 className="text-center">This market has been closed!</h1>}
+        <button
+          className="items-center text-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          onClick={(e: any) => crankMarket()}
+        >
+          CRANK
+        </button>
+{OrderBook({asks, bids, market})}
+        
+      </div>
         <footer className="bg-white rounded-lg shadow m-4 dark:bg-gray-800">
           <div className="w-full mx-auto max-w-screen-xl p-4 md:flex md:items-center md:justify-between">
             <span className="text-sm text-gray-500 sm:text-center dark:text-gray-400">
