@@ -99,20 +99,36 @@ async function findAllMarkets(
     sleep(5000);
   }
 
+
   return marketsAll;
 }
 
 export const fetchData = async (provider: AnchorProvider) => {
   const connection = useHookConnection();
 
-  let markets = await findAllMarkets(connection, provider, new PublicKey("ordJmnZ7HuH9rAiPu5Qepr3hmoCjRF7CWguYV5kuG7Q"));
-  return markets;
+  return [
+    {
+      market: "2w7MDsFrJ4w4LxwD3FDE2PRSwpqjL2Dm2wHP3Ky7y1Sq",
+      baseMint: "4LM7puozgrYbpL8VPiLN1waGKPtpznGz8S94uzhKCbYw",
+      quoteMint: "9cr8ZfNyoz2CyCKZQs3rT5zCxPkLt1QkL2cQHpipGipj",
+      name: "F-HORSE/GGBP",
+      // timestamp: tx.blockTime,
+    }
+  ]
+  // let markets = await findAllMarkets(connection, provider, programId);
+  // return markets;
 };
 
 export const getMarket = async (
   client: OpenBookV2Client,
   publicKey: string
 ): Promise<Market> => {
-  let market = await Market.load(client, new PublicKey(publicKey));
-  return market ? market : ({} as Market);
+  try {
+    let market = await Market.load(client, new PublicKey(publicKey));
+    return market ? market : ({} as Market);
+    
+  } catch (error) {
+    
+  }
+  return null;
 };

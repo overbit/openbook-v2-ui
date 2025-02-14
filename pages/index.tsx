@@ -19,6 +19,7 @@ import {
   Market,
   MarketAccount,
   nameToString,
+  Order,
   priceLotsToUi,
 } from "@openbook-dex/openbook-v2";
 import { useOpenbookClient } from "../hooks/useOpenbookClient";
@@ -26,7 +27,7 @@ import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ButtonState } from "../components/Button";
 import { toast } from "react-hot-toast";
-import { getLeafNodes } from "../utils/utils";
+import { getBooksideOrders } from "../utils/utils";
 
 function priceData(key) {
   const shiftedValue = key.shrn(64); // Shift right by 64 bits
@@ -35,8 +36,8 @@ function priceData(key) {
 
 export default function Home() {
   const { publicKey, signTransaction, connected, wallet } = useWallet();
-  const [asks, setAsks] = useState([]);
-  const [bids, setBids] = useState([]);
+  const [asks, setAsks] = useState<Order[]>([]);
+  const [bids, setBids] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [markets, setMarkets] = useState([
     { market: "", baseMint: "", quoteMint: "", name: "" },
@@ -103,6 +104,10 @@ export default function Home() {
 
   const fetchMarket = async (key: string) => {
     const market = await getMarket(openbookClient, key);
+    if(!market){
+      setMarkets(markets.filter((m) => m.market !== key));
+      return;
+    }
     setMarket(market.account);
     setMarketPubkey(new PublicKey(key));
 
@@ -110,21 +115,28 @@ export default function Home() {
     const booksideAsks = await market.loadAsks();
     const booksideBids = await market.loadBids();
     if (booksideAsks === null || booksideBids === null) return;
-    console.log("booksideAsks.account",booksideAsks.account)
-    console.log("booksideBids.account",booksideBids.account)
+    // console.log("booksideAsks.account",booksideAsks.account)
+    // console.log("booksideBids.account",booksideBids.account)
 
-    const asks = getLeafNodes(openbookClient.program,booksideAsks.account).sort((a, b) => {
-      const priceA = priceData(a.key);
-      const priceB = priceData(b.key);
-      return priceB - priceA;
-    }) ;
+    // const asks = getLeafNodes(openbookClient.program,booksideAsks.account).sort((a, b) => {
+    //   const priceA = priceData(a.key);
+    //   const priceB = priceData(b.key);
+    //   return priceB - priceA;
+    // }) ;
+
+    const asks = getBooksideOrders(booksideAsks).sort(
+      (a, b) => a.price - b.price
+    );
+    const bids = getBooksideOrders(booksideBids).sort(
+      (a, b) => b.price - a.price
+    );
     setAsks(asks);
-    const bids = getLeafNodes(openbookClient.program,booksideBids.account).sort((a, b) => {
-      console.log("booksideBids.account.roots",booksideBids.account.roots)
-      const priceA = priceData(a.key);
-      const priceB = priceData(b.key);
-      return priceB - priceA;
-    });
+    // const bids = getLeafNodes(openbookClient.program,booksideBids.account).sort((a, b) => {
+    //   console.log("booksideBids.account.roots",booksideBids.account.roots)
+    //   const priceA = priceData(a.key);
+    //   const priceB = priceData(b.key);
+    //   return priceB - priceA;
+    // });
     setBids(bids);
   };
 
@@ -255,18 +267,18 @@ export default function Home() {
                 </TableHeader>
                 <TableBody items={asks}>
                   {(item) => (
-                    <TableRow key={priceData(item.key)}>
+                    <TableRow key={item.price}>
                       {(columnKey) => (
                         <TableCell>
                           {columnKey == "owner"
-                            ? getKeyValue(item, columnKey)
+                            ? item.leafNode.owner
                                 .toString()
                                 .substring(0, 4) +
                               ".." +
-                              getKeyValue(item, columnKey).toString().slice(-4)
+                              item.leafNode.owner.toString().slice(-4)
                             : columnKey == "quantity"
-                            ? getKeyValue(item, columnKey).toString()
-                            : priceDataToUI(item.key)}
+                            ? item.size.toString()
+                            : item.price}
                         </TableCell>
                       )}
                     </TableRow>
