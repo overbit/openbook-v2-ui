@@ -7,6 +7,7 @@ import {
   IDL,
   sleep,
   Market,
+  nameToString,
 } from "@openbook-dex/openbook-v2";
 import { Message, PublicKey } from "@solana/web3.js";
 import {
@@ -34,89 +35,44 @@ async function findAllMarkets(
     programId,
     provider
   );
-  const [eventAuthority] = PublicKey.findProgramAddressSync(
-    [Buffer.from('__event_authority')],
-    programId
-  );
-  const marketsAll = [];
-  const BATCH_TX_SIZE = 50;
 
-  const signatures = (
-    await connection.getSignaturesForAddress(eventAuthority)
-  )
-    .filter((x) => x.err === null)
-    .map((x) => x.signature);
+  const marketDiscriminatorB58 = 'dkokXHR3DTw';
+  const openOrderAdminPublicKey = '9a1nsA5o2AcD86VoyupeMc6nEuuQQ9StVxq34kea9Bmz';
+  const filters = [{ memcmp: { offset: 0, bytes: marketDiscriminatorB58 } }];
 
-  const batchSignatures: [string[]] = [[]];
-  for (let i = 0; i < signatures.length; i += BATCH_TX_SIZE) {
-    batchSignatures.push(signatures.slice(0, BATCH_TX_SIZE));
-  }
-  for (const batch of batchSignatures) {
-    const allTxs = await connection.getTransactions(batch, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
+  if (openOrderAdminPublicKey) {
+    filters.push({
+      memcmp: { offset: 88, bytes: openOrderAdminPublicKey },
     });
-    for (const tx of allTxs) {
-      if (
-        tx?.meta?.innerInstructions !== null &&
-        tx?.meta?.innerInstructions !== undefined
-      ) {
-        for (const innerIns of tx.meta.innerInstructions) {
-          const innerIx = innerIns.instructions?.[11];
-          if (innerIx?.accounts?.[0] !== undefined) {
-            // validate key and program key
-            const eventAuthorityKey = innerIx.accounts[0];
-            const programKey = innerIx.programIdIndex;
-            if (
-              (tx.transaction.message as Message).staticAccountKeys[
-                eventAuthorityKey
-              ].toString() !== eventAuthority.toString() ||
-              (tx.transaction.message as Message).staticAccountKeys[
-                programKey
-              ].toString() !== programId.toString()
-            ) {
-              continue;
-            } else {
-              const ixData = utils.bytes.bs58.decode(innerIx.data);
-              const eventData = utils.bytes.base64.encode(ixData.slice(8));
-              const event = program.coder.events.decode(eventData);
+  }
 
-              if (event != null) {
-                const market = {
-                  market: (event.data.market as PublicKey).toString(),
-                  baseMint: (event.data.baseMint as PublicKey).toString(),
-                  quoteMint: (event.data.quoteMint as PublicKey).toString(),
-                  name: event.data.name as string,
-                  timestamp: tx.blockTime,
-                };
-                marketsAll.push(market);
-              }
-            }
-          }
-        }
+  const marketAccounts = await connection.getProgramAccounts(
+    OPENBOOK_PROGRAM_ID,
+    {
+      filters,
+    }
+  );
+  return marketAccounts.map(
+    (x) =>
+      {
+        const account : MarketAccount = program.coder.accounts.decode(
+          'market',
+          x.account.data
+        );
+        return{
+        market: x.pubkey.toBase58(),
+        baseMint: account.baseMint.toBase58(),
+        quoteMint: account.quoteMint.toBase58(),
+        name: nameToString(account.name),
       }
     }
-    sleep(5000);
-  }
-
-
-  return marketsAll;
+  );
 }
 
 export const fetchData = async (provider: AnchorProvider) => {
   const connection = useHookConnection();
-
-  return [
-    {
-      market: "2w7MDsFrJ4w4LxwD3FDE2PRSwpqjL2Dm2wHP3Ky7y1Sq",
-      baseMint: "4LM7puozgrYbpL8VPiLN1waGKPtpznGz8S94uzhKCbYw",
-      quoteMint: "9cr8ZfNyoz2CyCKZQs3rT5zCxPkLt1QkL2cQHpipGipj",
-      name: "F-HORSE/GGBP",
-      // timestamp: tx.blockTime,
-    }
-  ]
-  // let markets = await findAllMarkets(connection, provider, programId);
-  // return markets;
+const markets = await findAllMarkets(connection, provider, programId);
+  return markets;
 };
 
 export const getMarket = async (

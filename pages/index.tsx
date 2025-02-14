@@ -11,16 +11,14 @@ import {
 } from "@nextui-org/react";
 
 import React from "react";
-import { fetchData, getMarket } from "../utils/openbook";
+import { fetchData, getMarket, RPC } from "../utils/openbook";
 import { BN } from "@coral-xyz/anchor";
 
 import { LinkIcon } from "@heroicons/react/24/outline";
 import {
-  Market,
   MarketAccount,
   nameToString,
   Order,
-  priceLotsToUi,
 } from "@openbook-dex/openbook-v2";
 import { useOpenbookClient } from "../hooks/useOpenbookClient";
 import { PublicKey } from "@solana/web3.js";
@@ -29,15 +27,12 @@ import { ButtonState } from "../components/Button";
 import { toast } from "react-hot-toast";
 import { getBooksideOrders } from "../utils/utils";
 
-function priceData(key) {
-  const shiftedValue = key.shrn(64); // Shift right by 64 bits
-  return shiftedValue.toNumber(); // Convert BN to a regular number
-}
-
 export default function Home() {
   const { publicKey, signTransaction, connected, wallet } = useWallet();
   const [asks, setAsks] = useState<Order[]>([]);
   const [bids, setBids] = useState<Order[]>([]);
+  const [bestBid, setBestBid] = useState<Order>();
+  const [bestAsk, setBestAsk] = useState<Order>();
   const [isLoading, setIsLoading] = React.useState(true);
   const [markets, setMarkets] = useState([
     { market: "", baseMint: "", quoteMint: "", name: "" },
@@ -87,7 +82,7 @@ export default function Home() {
     fetchData(provider)
       .then((res) => {
         setMarkets(res);
-        fetchMarket(res[0].market);
+        fetchMarket(res[0].market.toString());
         setMarketPubkey(new PublicKey(res[0].market));
       })
       .catch((e) => {
@@ -95,19 +90,13 @@ export default function Home() {
       });
   }, []);
 
-  function priceDataToUI(key) {
-    const shiftedValue = key.shrn(64); // Shift right by 64 bits
-    const priceLots = shiftedValue.toNumber(); // Convert BN to a regular number
-
-    return priceLotsToUi(market, priceLots);
-  }
-
   const fetchMarket = async (key: string) => {
     const market = await getMarket(openbookClient, key);
     if(!market){
       setMarkets(markets.filter((m) => m.market !== key));
       return;
     }
+
     setMarket(market.account);
     setMarketPubkey(new PublicKey(key));
 
@@ -115,14 +104,6 @@ export default function Home() {
     const booksideAsks = await market.loadAsks();
     const booksideBids = await market.loadBids();
     if (booksideAsks === null || booksideBids === null) return;
-    // console.log("booksideAsks.account",booksideAsks.account)
-    // console.log("booksideBids.account",booksideBids.account)
-
-    // const asks = getLeafNodes(openbookClient.program,booksideAsks.account).sort((a, b) => {
-    //   const priceA = priceData(a.key);
-    //   const priceB = priceData(b.key);
-    //   return priceB - priceA;
-    // }) ;
 
     const asks = getBooksideOrders(booksideAsks).sort(
       (a, b) => a.price - b.price
@@ -130,13 +111,9 @@ export default function Home() {
     const bids = getBooksideOrders(booksideBids).sort(
       (a, b) => b.price - a.price
     );
+    setBestAsk(booksideAsks.best());
+    setBestBid(booksideBids.best());
     setAsks(asks);
-    // const bids = getLeafNodes(openbookClient.program,booksideBids.account).sort((a, b) => {
-    //   console.log("booksideBids.account.roots",booksideBids.account.roots)
-    //   const priceA = priceData(a.key);
-    //   const priceB = priceData(b.key);
-    //   return priceB - priceA;
-    // });
     setBids(bids);
   };
 
@@ -144,7 +121,7 @@ export default function Home() {
     <div>
       {pk}
       <a
-        href={`https://solscan.io/account/${pk}`}
+        href={`https://solscan.io/account/${pk}?${RPC.indexOf('devnet') ? 'cluster=devnet' : ''}`}
         target="_blank"
         className="pl-2"
       >
@@ -209,7 +186,7 @@ export default function Home() {
 
         {market.asks ? (
           <div>
-            <div className="grid grid-cols-2 gap-2 text-center border-r-4 border-b-4 border-l-4">
+            <div className="grid grid-cols-3 gap-2 text-center border-r-4 border-b-4 border-l-4">
               <div className="">
                 <p className="font-bold">Name </p>
                 {market.asks ? nameToString(market.name) : ""}
@@ -242,6 +219,12 @@ export default function Home() {
                 {market.asks ? market.baseDecimals : ""}
                 <p className="font-bold">Quote Decimals </p>
                 {market.asks ? market.quoteDecimals : ""}
+              </div>
+              <div className="">
+                <p className="font-bold">Best Ask </p>
+                {bestAsk ? bestAsk?.price : ""}
+                <p className="font-bold">Best Bid </p>
+                {bestBid ? bestBid?.price : "NA"}
               </div>
             </div>
 
@@ -293,19 +276,19 @@ export default function Home() {
                   )}
                 </TableHeader>
                 <TableBody items={bids}>
-                  {(item) => (
-                    <TableRow key={priceData(item.key)}>
+                {(item) => (
+                    <TableRow key={item.price}>
                       {(columnKey) => (
                         <TableCell>
                           {columnKey == "owner"
-                            ? getKeyValue(item, columnKey)
+                            ? item.leafNode.owner
                                 .toString()
                                 .substring(0, 4) +
                               ".." +
-                              getKeyValue(item, columnKey).toString().slice(-4)
+                              item.leafNode.owner.toString().slice(-4)
                             : columnKey == "quantity"
-                            ? getKeyValue(item, columnKey).toString()
-                            : priceDataToUI(item.key)}
+                            ? item.size.toString()
+                            : item.price}
                         </TableCell>
                       )}
                     </TableRow>
