@@ -44,7 +44,7 @@ const CreateMarket = () => {
     };
     try {
       openbookClient
-        .createMarket(
+        .createMarketIx(
           publicKey,
           name,
           quoteMint,

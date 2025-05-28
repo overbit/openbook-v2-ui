@@ -18,6 +18,12 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "target": "esnext",
+    "baseUrl": "./",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
   "include": [
     "next-env.d.ts",

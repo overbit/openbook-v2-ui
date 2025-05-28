@@ -3,6 +3,12 @@ import EventEmitter from "eventemitter3";
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import bs58 from 'bs58';
 import { OPENBOOK_PROGRAM_ID, Order, BookSide } from "@openbook-dex/openbook-v2";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 
 export interface WalletAdapter extends EventEmitter {

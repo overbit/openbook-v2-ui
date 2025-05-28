@@ -21,7 +21,8 @@ import type { AppProps } from "next/app";
 import { Inter } from "next/font/google";
 
 import ActiveLink from "../components/ActiveLink";
-import { RPC } from "../utils/openbook";
+import { RPC } from "../lib/openbook";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,23 +37,33 @@ export default function App({ Component, pageProps }: AppProps) {
       (await import("@solana/wallet-adapter-react-ui")).WalletModalProvider,
     { ssr: false }
   );
+  const queryClient = new QueryClient();
 
   return (
+      <QueryClientProvider client={queryClient}>
+
     <ConnectionProvider endpoint={NETWORK}>
       <ClientWalletProvider wallets={wallets}>
         <ReactUIWalletModalProviderDynamic>
           <Toaster position="bottom-left" reverseOrder={true} />
 
           <div className={`${inter.className} dark`}>
-            <WalletMultiButton className="btn" />
+            {/* <WalletMultiButton className="btn" /> */}
             <div className="w-full px-4 py-2 border-b-2">
               <div className="flex flex-row flex-wrap space-x-4">
                 <div className="inline">
-                  <ActiveLink href="/">Markets</ActiveLink>
+                  {ActiveLink({
+                    href: "/",
+                    children: "Markets",
+                  })}
                 </div>
                 <div className="inline">
-                  <ActiveLink href="/create_market">Create Market</ActiveLink>
+                {ActiveLink({
+                    href: "/create_market",
+                    children: "Create Market",
+                  })}
                 </div>
+                
               </div>
             </div>
             <Component {...pageProps} />
@@ -60,5 +71,6 @@ export default function App({ Component, pageProps }: AppProps) {
         </ReactUIWalletModalProviderDynamic>
       </ClientWalletProvider>
     </ConnectionProvider>
+  </QueryClientProvider>
   );
 }

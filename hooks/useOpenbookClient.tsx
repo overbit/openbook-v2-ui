@@ -1,8 +1,8 @@
 import { OpenBookV2Client } from "@openbook-dex/openbook-v2";
 import { Connection, Keypair } from "@solana/web3.js";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { WalletAdapter } from "../utils/utils";
-import { RPC } from "../utils/openbook";
+import { WalletAdapter } from "../lib/utils";
+import { RPC } from "../lib/openbook";
 import EmptyWallet from "./emptyWallet";
 import { useProvider } from "./useProvider";
 

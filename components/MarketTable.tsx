@@ -9,6 +9,7 @@ import {
 } from "@nextui-org/react";
 import { LinkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { RPC } from "../lib/openbook";
 
 type Column = {
   key: string;
@@ -37,7 +38,7 @@ export default function MarketTable({
     <div>
       {pk.length > 15 ? `${pk.substring(0, 10)}...` : pk}
       <a
-        href={`https://solscan.io/account/${pk}`}
+        href={pk.length > 44 ? `https://solscan.io/tx/${pk}?cluster=${RPC.indexOf('devnet') ? "devnet": ""}` : `https://solscan.io/account/${pk}?cluster=${RPC.indexOf('devnet') ? "devnet": ""}`}
         target="_blank"
         className="pl-2"
       >
