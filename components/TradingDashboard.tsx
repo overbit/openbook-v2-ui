@@ -2,36 +2,34 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import Header from './Header';
-import OrderBook from './TradingOrderbook';
-import TradingChart from './TradingChart';
+import OrderBook from './Orderbook';
 import TradeHistory from './TradeHistory';
 import MarketStats from './MarketStats';
 import { useQuery } from '@tanstack/react-query';
-import { getAvailableMarkets, getHistoricalPrices, getMarketStats, initializeMarkets } from '@/lib/openbook';
-import { useFakeProvider, useOpenbookClient } from '@/hooks/useOpenbookClient';
+import { getAvailableMarkets, getHistoricalPrices, getMarketStats, initializeMarkets, MarketData } from '@/lib/openbook';
+import { useProvider, useOpenbookClient } from '@/hooks/useOpenbookClient';
 
 const TradingDashboard = () => {
-  const [availableMarkets, setAvailableMarkets] = useState<string[]>([]);
+  const [availableMarkets, setAvailableMarkets] = useState<MarketData[]>([]);
   const [selectedMarket, setSelectedMarket] = useState('');
+
 
   const openbookClient = useOpenbookClient();
     // Initialize markets on component mount
   useEffect(() => {
     const init = async () => {
       try {
-        const markets = await getAvailableMarkets(useFakeProvider());
-        const marketSymbols = markets.map(m => m.symbol).filter(Boolean);
-        setAvailableMarkets(marketSymbols);
+        const markets = await getAvailableMarkets(useProvider());
+        setAvailableMarkets(markets);
         
         // Set default market to first available
-        if (marketSymbols.length > 0 && !selectedMarket) {
-          setSelectedMarket(marketSymbols[0]);
+        if (markets.length > 0 && !selectedMarket) {
+          setSelectedMarket(markets[0].name);
         }
       } catch (error) {
         console.error('Failed to initialize markets:', error);
         // Fallback to a default market name
-        // setSelectedMarket('SOL/USDC');
-        // setAvailableMarkets(['SOL/USDC']);
+        setAvailableMarkets([]);
       }
     };
     
@@ -39,18 +37,18 @@ const TradingDashboard = () => {
   }, []);
 
   
-
   const { data: marketStats, isLoading: statsLoading } = useQuery({
     queryKey: ['marketStats', selectedMarket],
-    queryFn: () => getMarketStats(selectedMarket, openbookClient),
+    queryFn: () => selectedMarket && getMarketStats(selectedMarket, openbookClient),
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const { data: chartData, isLoading: chartLoading } = useQuery({
     queryKey: ['chartData', selectedMarket],
-    queryFn: () => getHistoricalPrices(selectedMarket,openbookClient),
+    queryFn: () => selectedMarket && getHistoricalPrices(selectedMarket,openbookClient),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
 
     // Don't render until we have a selected market
   if (!selectedMarket) {
@@ -63,7 +61,6 @@ const TradingDashboard = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Header selectedMarket={selectedMarket} onMarketChange={setSelectedMarket} availableMarkets={availableMarkets}/>
@@ -78,7 +75,7 @@ const TradingDashboard = () => {
         
         {/* Trade History */}
         <Card className="bg-gray-900 border-gray-800">
-          <TradeHistory market={selectedMarket} />
+          <TradeHistory marketSymbol={selectedMarket} />
         </Card>
         
         {/* Chart Section */}

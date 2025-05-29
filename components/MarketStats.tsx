@@ -2,10 +2,11 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { MarketStatsData } from '@/lib/openbook';
 
 interface MarketStatsProps {
   market: string;
-  stats: any;
+  stats: MarketStatsData;
   isLoading: boolean;
 }
 
@@ -36,7 +37,7 @@ const MarketStats = ({ market, stats, isLoading }: MarketStatsProps) => {
         <div>
           <div className="text-sm text-gray-400">Price</div>
           <div className={`text-lg font-bold ${stats.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-            ${stats.price}
+            {stats.quoteSymbol} {stats.price}
           </div>
         </div>
         
@@ -50,12 +51,12 @@ const MarketStats = ({ market, stats, isLoading }: MarketStatsProps) => {
         
         <div>
           <div className="text-sm text-gray-400">24h High</div>
-          <div className="text-white">${stats.high24h}</div>
+          <div className="text-white">{stats.high24h}</div>
         </div>
         
         <div>
           <div className="text-sm text-gray-400">24h Low</div>
-          <div className="text-white">${stats.low24h}</div>
+          <div className="text-white">{stats.low24h}</div>
         </div>
         
         <div>

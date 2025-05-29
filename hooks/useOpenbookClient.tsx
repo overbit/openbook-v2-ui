@@ -1,10 +1,8 @@
 import { OpenBookV2Client } from "@openbook-dex/openbook-v2";
 import { Connection, Keypair } from "@solana/web3.js";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { WalletAdapter } from "../lib/utils";
 import { RPC } from "../lib/openbook";
 import EmptyWallet from "./emptyWallet";
-import { useProvider } from "./useProvider";
 
 export function useOpenbookClient(): OpenBookV2Client {
   const provider = useProvider();
@@ -19,7 +17,7 @@ export function useHookConnection(): Connection {
   return connection;
 }
 
-export function useFakeProvider(): AnchorProvider {
+export function useProvider(): AnchorProvider {
   return new AnchorProvider(
     useHookConnection(),
     new EmptyWallet(Keypair.generate()),
