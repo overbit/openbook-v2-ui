@@ -5,11 +5,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useOpenbookClient } from '@/hooks/useOpenbookClient';
+import { useQuery } from '@tanstack/react-query';
+import { getRecentTrades } from '@/lib/openbook';
 
-const OrderForm = () => {
+interface OrderFormProps {
+  marketSymbol: string;
+  accountData: any; // Replace with actual type if available
+}
+
+const OrderForm = ({ marketSymbol }) => {
   const [orderType, setOrderType] = useState('market');
-  const [price, setPrice] = useState('98.47');
+  const [price, setPrice] = useState('1.00'); // Default price for limit orders
   const [size, setSize] = useState('');
+  const baseToken = marketSymbol.split('/')[0]; // e.g., "{baseToken}"
+  const quoteToken = marketSymbol.split('/')[1]; // e.g., "USDC"
+
+  const openbookClient = useOpenbookClient();
+
+  // const { data: trades, isLoading } = useQuery({
+  //   queryKey: ['trades', marketSymbol],
+  //   queryFn: () => marketSymbol && getRecentTrades(marketSymbol, openbookClient),
+  //   refetchInterval: 2000, // Refetch every 2 seconds
+  // });
+
+  const accountData= {
+    quoteTokenBalance:"MOCKED 1250.00", // Mocked available balance for quote token
+    baseTokenBalance: "MOCKED 15.75", // Mocked base token balance
+  }
 
   return (
     <div className="p-4">
@@ -38,7 +61,7 @@ const OrderForm = () => {
           
           {orderType === 'limit' && (
             <div>
-              <Label className="text-sm text-gray-400">Price (USDC)</Label>
+              <Label className="text-sm text-gray-400">Price ({quoteToken})</Label>
               <Input
                 type="number"
                 value={price}
@@ -50,7 +73,7 @@ const OrderForm = () => {
           )}
           
           <div>
-            <Label className="text-sm text-gray-400">Size (SOL)</Label>
+            <Label className="text-sm text-gray-400">Size ({baseToken})</Label>
             <Input
               type="number"
               value={size}
@@ -61,7 +84,7 @@ const OrderForm = () => {
           </div>
           
           <div className="flex justify-between text-sm text-gray-400">
-            <span>Available: 1,250.00 USDC</span>
+            <span>Available: {accountData.quoteTokenBalance} {quoteToken}</span>
           </div>
           
           <Button className="w-full bg-green-600 hover:bg-green-700">
@@ -86,7 +109,7 @@ const OrderForm = () => {
           
           {orderType === 'limit' && (
             <div>
-              <Label className="text-sm text-gray-400">Price (USDC)</Label>
+              <Label className="text-sm text-gray-400">Price ({quoteToken})</Label>
               <Input
                 type="number"
                 value={price}
@@ -98,7 +121,7 @@ const OrderForm = () => {
           )}
           
           <div>
-            <Label className="text-sm text-gray-400">Size (SOL)</Label>
+            <Label className="text-sm text-gray-400">Size ({baseToken})</Label>
             <Input
               type="number"
               value={size}
@@ -109,7 +132,7 @@ const OrderForm = () => {
           </div>
           
           <div className="flex justify-between text-sm text-gray-400">
-            <span>Available: 15.75 SOL</span>
+            <span>Available: {accountData.baseTokenBalance} {baseToken}</span>
           </div>
           
           <Button className="w-full bg-red-600 hover:bg-red-700">

@@ -23,7 +23,7 @@ const Portfolio = ({ market }: PortfolioProps) => {
         <div className="text-sm text-gray-400">Total: {totalValue}</div>
       </div>
       
-      <ScrollArea className="h-48">
+      <ScrollArea className="min-h-48">
         <div className="space-y-2">
           {balances.map((balance, index) => (
             <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-800 rounded">

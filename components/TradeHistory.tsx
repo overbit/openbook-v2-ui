@@ -59,7 +59,7 @@ const TradeHistory: React.FC<TradeHistoryProps> = ({ marketSymbol }) => {
               <span>Loading trade history...</span>
             </div>
           ) :
-          <ScrollArea className="h-32">
+          <ScrollArea className="h-80">
             {openOrders.map((order) => (
               <div key={order.seqNum} className="grid grid-cols-6 gap-4 text-sm p-2 hover:bg-gray-800 rounded">
                 <div className={order.side === 'Buy' ? 'text-green-400' : 'text-red-400'}>
