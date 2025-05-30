@@ -236,10 +236,8 @@ export async function getOrderbook(
     const market = marketData.market;
 
     // Load bids and asks using the market instance (without connection parameter)
-    const [bidsAccount, asksAccount] = await Promise.all([
-      market.loadBids(),
-      market.loadAsks(),
-    ]);
+    const { bids: bidsAccount, asks: asksAccount } =
+      await market.loadOrderBook();
 
     // Get orders using the utility function
     const bids = getBooksideOrders(bidsAccount);
