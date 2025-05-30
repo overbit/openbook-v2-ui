@@ -489,6 +489,9 @@ async function getOoasByPublicKey(
     );
   } catch (error) {
     console.error(`Error fetching OpenOrders accounts:`, error);
-    return await getOoasByPublicKey(ooasPublicKey, market);
+
+    if (error.message.includes("429")) {
+      return await getOoasByPublicKey(ooasPublicKey, market);
+    }
   }
 }
