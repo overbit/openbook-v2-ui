@@ -13,5 +13,5 @@ npm run dev
 ```
 # buy me a coffee with sol @
 ```bash
-FTYW3gGsUbat3UiwjKQqNNPCutzF9CKjXyrrih6Fhx2r
+sh1tDf9EdCbci6SPtgJpy5iAXxK7QzG2NQLBBPMB9PK
 ```
