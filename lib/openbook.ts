@@ -10,9 +10,12 @@ import {
   BookSide,
   OpenOrders,
   baseLotsToUi,
+  FillEvent,
+  OutEvent,
 } from "@openbook-dex/openbook-v2";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
+
 import { programId } from "./utils";
 
 // MAINNET
@@ -73,9 +76,9 @@ export const fetchData = async (provider: AnchorProvider) => {
 export const getMarket = async (
   client: OpenBookV2Client,
   publicKey: string
-): Promise<Market> => {
+): Promise<Market | null> => {
   try {
-    let market = await Market.load(client, new PublicKey(publicKey));
+    const market = await Market.load(client, new PublicKey(publicKey));
     return market ? market : ({} as Market);
   } catch (error) {
     console.error(`Error loading market ${publicKey}:`, error);
@@ -146,7 +149,7 @@ export interface MarketStatsData {
 export async function getMarketStats(
   marketSymbol: string,
   openbookClient: OpenBookV2Client
-): Promise<MarketStatsData> {
+): Promise<MarketStatsData | null> {
   try {
     const marketData = await getMarketBySymbol(marketSymbol, openbookClient);
 
@@ -306,8 +309,12 @@ export async function getHistoricalPrices(
   }
 }
 
-export function getBooksideOrders(bookside: BookSide): Order[] {
+export function getBooksideOrders(bookside: BookSide | undefined): Order[] {
   const orders: Order[] = [];
+
+  if (!bookside) {
+    return orders;
+  }
 
   for (const order of bookside.items()) {
     orders.push(order);
@@ -330,7 +337,7 @@ export async function getRecentTrades(
 
   // Load event queue which contains fill events (matched orders)
   const eventHeap = await market.loadEventHeap();
-  const events = [];
+  const events: (FillEvent | OutEvent)[] = [];
 
   for (const event of eventHeap.parsedEvents()) {
     events.push(event);
@@ -386,6 +393,7 @@ export async function getOpenOrders(
     // Get orders using the utility function
     const bids = getBooksideOrders(bidsAccount);
     const asks = getBooksideOrders(asksAccount);
+
     const openOrders = [...bids, ...asks].map((order) =>
       booksideOrderToOrderDetails(order)
     );
@@ -407,22 +415,29 @@ async function loadOwnerAddress(
 
   const ooas = await getOoasByPublicKey(ooasPublicKeys, market);
   orders.forEach((order) => {
-    order.ownerAddress = ooas.get(order.ooaAddressPk)["owner"].toBase58();
+    const ooa = ooas.get(order.ooaAddressPk);
+    if (!ooa) {
+      console.warn(
+        `OpenOrders account not found for public key: ${order.ooaAddressPk}`
+      );
+      return;
+    }
+    order.ownerAddress = ooa["owner"].toBase58();
   });
 
   return orders;
 }
 
 export interface OrderDetails {
-  seqNum: any;
+  seqNum: number;
   side: string;
   marketName: string;
   price: number;
   amount: number;
-  ooaAddressPk: any;
+  ooaAddressPk: PublicKey;
   ownerAddress?: string; // Added to store the owner address
   isExpired: boolean;
-  originalOrderId: any;
+  originalOrderId: number;
   createdAt: string;
 }
 
