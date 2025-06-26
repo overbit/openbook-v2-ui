@@ -3,18 +3,13 @@ require("@solana/wallet-adapter-react-ui/styles.css");
 
 import React from "react";
 
-import { ConnectionProvider } from "@solana/wallet-adapter-react";
-
 import { Toaster } from "react-hot-toast";
 
 // You can use any of the other enpoints here
-export const NETWORK = RPC;
 
 import type { AppProps } from "next/app";
 import { Inter } from "next/font/google";
 
-import ActiveLink from "../components/ActiveLink";
-import { RPC } from "../lib/openbook";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,13 +18,12 @@ export default function App({ Component, pageProps }: AppProps) {
   const queryClient = new QueryClient();
 
   return (
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="bottom-left" reverseOrder={true} />
 
-          <Toaster position="bottom-left" reverseOrder={true} />
-
-          <div className={`${inter.className} dark`}>
-            {/* <WalletMultiButton className="btn" /> */}
-            {/* <div className="w-full px-4 py-2 border-b-2">
+      <div className={`${inter.className} dark`}>
+        {/* <WalletMultiButton className="btn" /> */}
+        {/* <div className="w-full px-4 py-2 border-b-2">
               <div className="flex flex-row flex-wrap space-x-4">
                 <div className="inline">
                   {ActiveLink({
@@ -51,8 +45,8 @@ export default function App({ Component, pageProps }: AppProps) {
                 </div>
               </div>
             </div> */}
-            <Component {...pageProps} />
-          </div>
-  </QueryClientProvider>
+        <Component {...pageProps} />
+      </div>
+    </QueryClientProvider>
   );
 }

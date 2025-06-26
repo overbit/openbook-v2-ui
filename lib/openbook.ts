@@ -1,6 +1,5 @@
 import {
   MarketAccount,
-  OPENBOOK_PROGRAM_ID,
   OpenBookV2Client,
   OpenbookV2,
   IDL,
@@ -13,28 +12,20 @@ import {
   FillEvent,
   OutEvent,
 } from "@openbook-dex/openbook-v2";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-
-import { programId } from "./utils";
+import { OPENBOOK_MARKET_ADMIN, OPENBOOK_PROGRAM_ID } from "./utils";
 
 // MAINNET
-// export const RPC = "https://misty-wcb8ol-fast-mainnet.helius-rpc.com/";
+//  const RPC = "https://misty-wcb8ol-fast-mainnet.helius-rpc.com/";
 // DEVNET
-export const RPC =
+const RPC =
   "https://skilled-powerful-leaf.solana-devnet.quiknode.pro/1cc7cc4d47403a18c9c63e4407849e4ac3767572/";
-export const RPCenv = "devnet";
+const RPCenv = "devnet";
 
-async function findAllMarkets(
-  connection: any,
-  provider: AnchorProvider,
-  programId: PublicKey
-) {
-  const program = new Program<OpenbookV2>(IDL, programId, provider);
-
+async function findAllMarkets(provider: AnchorProvider) {
   const marketDiscriminatorB58 = "dkokXHR3DTw";
-  const openOrderAdminPublicKey =
-    "9a1nsA5o2AcD86VoyupeMc6nEuuQQ9StVxq34kea9Bmz";
+  const openOrderAdminPublicKey = OPENBOOK_MARKET_ADMIN;
   const filters = [{ memcmp: { offset: 0, bytes: marketDiscriminatorB58 } }];
 
   if (openOrderAdminPublicKey) {
@@ -43,12 +34,13 @@ async function findAllMarkets(
     });
   }
 
-  const marketAccounts = await connection.getProgramAccounts(
-    OPENBOOK_PROGRAM_ID,
+  const marketAccounts = await provider.connection.getProgramAccounts(
+    new PublicKey(OPENBOOK_PROGRAM_ID),
     {
       filters,
     }
   );
+  const program = new Program<OpenbookV2>(IDL, OPENBOOK_PROGRAM_ID, provider);
   return marketAccounts.map((x) => {
     const account: MarketAccount = program.coder.accounts.decode(
       "market",
@@ -65,11 +57,7 @@ async function findAllMarkets(
 }
 
 export const fetchData = async (provider: AnchorProvider) => {
-  const markets = await findAllMarkets(
-    provider.connection,
-    provider,
-    programId
-  );
+  const markets = await findAllMarkets(provider);
   return markets;
 };
 
@@ -495,7 +483,7 @@ async function getOoasByPublicKey(
             `OpenOrders account not found in cache for public key: ${ooaPublicKey}`
           );
         }
-        return [ooaPublicKey, ooa];
+        return [ooaPublicKey, ooa!];
       })
     );
   } catch (error) {
@@ -504,5 +492,6 @@ async function getOoasByPublicKey(
     if (error.message.includes("429")) {
       return await getOoasByPublicKey(ooasPublicKey, market);
     }
+    throw new Error(`Failed to fetch OpenOrders accounts: ${error.message}`);
   }
 }

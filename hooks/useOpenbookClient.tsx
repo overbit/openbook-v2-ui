@@ -1,25 +1,19 @@
 import { OpenBookV2Client } from "@openbook-dex/openbook-v2";
 import { Connection, Keypair } from "@solana/web3.js";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { RPC } from "../lib/openbook";
 import EmptyWallet from "./emptyWallet";
+import { OPENBOOK_PROGRAM_ID, SOLANA_RPC_URL } from "@/lib/utils";
 
 export function useOpenbookClient(): OpenBookV2Client {
   const provider = useProvider();
 
-  let client = new OpenBookV2Client(provider);
+  const client = new OpenBookV2Client(provider, OPENBOOK_PROGRAM_ID);
   return client;
-}
-
-
-export function useHookConnection(): Connection {
-  const connection = new Connection(RPC);
-  return connection;
 }
 
 export function useProvider(): AnchorProvider {
   return new AnchorProvider(
-    useHookConnection(),
+    new Connection(SOLANA_RPC_URL),
     new EmptyWallet(Keypair.generate()),
     {
       /** disable transaction verification step */
