@@ -442,10 +442,6 @@ export interface OrderDetails {
 }
 
 function booksideOrderToOrderDetails(bookSideOrder: Order): OrderDetails {
-  if (!bookSideOrder) {
-    return null;
-  }
-
   return {
     seqNum: bookSideOrder.seqNum.toNumber(),
     side: bookSideOrder.side.bid ? "Buy" : "Sell",
