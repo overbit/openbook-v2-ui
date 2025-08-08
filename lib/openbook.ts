@@ -16,13 +16,6 @@ import { PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { OPENBOOK_MARKET_ADMIN, OPENBOOK_PROGRAM_ID } from "./utils";
 
-// MAINNET
-//  const RPC = "https://misty-wcb8ol-fast-mainnet.helius-rpc.com/";
-// DEVNET
-const RPC =
-  "https://skilled-powerful-leaf.solana-devnet.quiknode.pro/1cc7cc4d47403a18c9c63e4407849e4ac3767572/";
-const RPCenv = "devnet";
-
 async function findAllMarkets(provider: AnchorProvider) {
   const marketDiscriminatorB58 = "dkokXHR3DTw";
   const openOrderAdminPublicKey = OPENBOOK_MARKET_ADMIN;
@@ -435,7 +428,7 @@ function booksideOrderToOrderDetails(bookSideOrder: Order): OrderDetails {
     side: bookSideOrder.side.bid ? "Buy" : "Sell",
     marketName: nameToString(bookSideOrder.market.account.name),
     price: bookSideOrder.price,
-    amount: baseLotsToUi(bookSideOrder.market.account, bookSideOrder.size),
+    amount: bookSideOrder.size, // baseLotsToUi(bookSideOrder.market.account, bookSideOrder.size),
     ooaAddressPk: bookSideOrder.leafNode.owner,
     ownerAddress: "NEED TO LOAD", // Placeholder, will be filled later
     isExpired: bookSideOrder.isExpired,
