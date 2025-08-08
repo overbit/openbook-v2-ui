@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getAvailableMarkets,
   getHistoricalPrices,
+  getMarket,
   getMarketStats,
   initializeMarkets,
   MarketData,
@@ -15,10 +16,12 @@ import {
 import { useProvider, useOpenbookClient } from "@/hooks/useOpenbookClient";
 import OrderForm from "./OrderForm";
 import Portfolio from "./Portfolio";
+import MarketDetails from "./MarketDetails";
 
 const TradingDashboard = () => {
   const [availableMarkets, setAvailableMarkets] = useState<MarketData[]>([]);
   const [selectedMarket, setSelectedMarket] = useState("");
+  const [selectedMarketAddress, setSelectedMarketAddress] = useState("");
 
   const openbookClient = useOpenbookClient();
   // Initialize markets on component mount
@@ -31,6 +34,7 @@ const TradingDashboard = () => {
         // Set default market to first available
         if (markets.length > 0 && !selectedMarket) {
           setSelectedMarket(markets[0].name);
+          setSelectedMarketAddress(markets[0].market);
         }
       } catch (error) {
         console.error("Failed to initialize markets:", error);
@@ -41,6 +45,13 @@ const TradingDashboard = () => {
 
     init();
   }, []);
+
+  const { data: market, isLoading: marketLoading } = useQuery({
+    queryKey: ["market", selectedMarketAddress],
+    queryFn: () => getMarket(openbookClient, selectedMarketAddress),
+    enabled: !!selectedMarket,
+    refetchInterval: 2000, // Refetch every 2 seconds
+  });
 
   const { data: marketStats, isLoading: statsLoading } = useQuery({
     queryKey: ["marketStats", selectedMarket],
@@ -76,6 +87,8 @@ const TradingDashboard = () => {
       />
 
       <div className="container mx-auto p-4 space-y-4">
+        <MarketDetails market={market} isLoading={marketLoading} />
+
         <MarketStats
           market={selectedMarket}
           stats={marketStats}
