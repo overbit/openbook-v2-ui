@@ -4,8 +4,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { getOpenOrders, getRecentTrades } from "@/lib/openbook";
 import { useOpenbookClient } from "@/hooks/useOpenbookClient";
-import { ExternalLink, Loader } from "lucide-react";
-import { shortenAddress, openSolanaExplorer } from "@/lib/utils";
+import { Loader } from "lucide-react";
+import { SolanaExplorer } from "./solana-explorer";
 
 interface TradeHistoryProps {
   marketSymbol: string;
@@ -72,17 +72,7 @@ const TradeHistory: React.FC<TradeHistoryProps> = ({ marketSymbol }) => {
                   </div>
                   <div>{order.amount}</div>
                   <div>${order.price}</div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-blue-400">
-                      {shortenAddress(order.ownerAddress!)}
-                    </span>
-                    <button
-                      onClick={() => openSolanaExplorer(order.ownerAddress!)}
-                      className="text-gray-400 hover:text-white"
-                    >
-                      <ExternalLink size={12} />
-                    </button>
-                  </div>{" "}
+                  <SolanaExplorer address={order.ownerAddress!} />
                   <div className="text-yellow-400">
                     {order.isExpired ? "Expired" : "Open"}
                   </div>
