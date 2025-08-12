@@ -2,7 +2,12 @@ import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
-import { getOpenOrders, getRecentTrades } from "@/lib/openbook";
+import {
+  getOpenOrders,
+  getRecentOrderFills,
+  getRecentTrades,
+  Side,
+} from "@/lib/openbook";
 import { useOpenbookClient } from "@/hooks/useOpenbookClient";
 import { Loader } from "lucide-react";
 import { SolanaExplorer } from "./solana-explorer";
@@ -13,11 +18,18 @@ interface TradeHistoryProps {
 
 const TradeHistory: React.FC<TradeHistoryProps> = ({ marketSymbol }) => {
   const openbookClient = useOpenbookClient();
-  const { data: trades, isLoading } = useQuery({
-    queryKey: ["trades", marketSymbol],
-    queryFn: () => getRecentTrades(marketSymbol, openbookClient),
+  // const { data: trades, isLoading } = useQuery({
+  //   queryKey: ["trades", marketSymbol],
+  //   queryFn: () => getRecentTrades(marketSymbol, openbookClient),
+  //   enabled: !!marketSymbol,
+  //   refetchInterval: 2000,
+  // });
+
+  const { data: fills, isLoading: isLoadingFills } = useQuery({
+    queryKey: ["fills", marketSymbol],
+    queryFn: () => getRecentOrderFills(marketSymbol, openbookClient),
     enabled: !!marketSymbol,
-    refetchInterval: 2000,
+    refetchInterval: 10000,
   });
 
   const { data: openOrders, isLoading: isLoadingOpenOrders } = useQuery({
@@ -55,7 +67,7 @@ const TradeHistory: React.FC<TradeHistoryProps> = ({ marketSymbol }) => {
               <span>Loading trade history...</span>
             </div>
           ) : (
-            <ScrollArea className="h-80">
+            <ScrollArea>
               {openOrders?.map((order) => (
                 <div
                   key={order.seqNum}
@@ -94,14 +106,14 @@ const TradeHistory: React.FC<TradeHistoryProps> = ({ marketSymbol }) => {
             <div>Time</div>
           </div>
 
-          {isLoading ? (
+          {/* {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader className="animate-spin h-6 w-6 mr-2" />
               <span>Loading trade history...</span>
             </div>
           ) : trades && trades.length > 0 ? (
-            <ScrollArea className="h-32">
-              {/* {trades.map((trade) => (
+            <ScrollArea className="h-32"> */}
+          {/* {trades.map((trade) => (
                 <div key={trade.index} className="grid grid-cols-5 gap-4 text-sm p-2 hover:bg-gray-800 rounded">
                   <div className={trade.type === 'Buy' ? 'text-green-400' : 'text-red-400'}>
                     {trade.type}
@@ -112,20 +124,80 @@ const TradeHistory: React.FC<TradeHistoryProps> = ({ marketSymbol }) => {
                   <div className="text-gray-400">{trade.time}</div>
                 </div>
               ))} */}
+          {/* </ScrollArea>
+          ) : ( */}
+          <div className="text-center text-gray-400 py-8">
+            {/* No trade history available */}
+            <span>Coming soon...</span>
+          </div>
+          {/* )} */}
+        </TabsContent>
+
+        <TabsContent value="fills">
+          <div className="grid grid-cols-6 gap-4 text-sm text-gray-400 mb-2 p-2">
+            <div>OriginalId</div>
+            <div>Type</div>
+            <div>Size</div>
+            <div>Price</div>
+            <div>Account</div>
+            <div>Timestamp</div>
+          </div>
+          {isLoadingFills ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader className="animate-spin h-6 w-6 mr-2" />
+              <span>Loading trade history...</span>
+            </div>
+          ) : fills && fills.length > 0 ? (
+            <ScrollArea>
+              {fills.map((fill) => (
+                <>
+                  <div
+                    key={fill.seqNum}
+                    className="grid grid-cols-6 gap-4 text-sm p-2 hover:bg-gray-800 rounded"
+                  >
+                    <div>${fill.takerClientOrderId}</div>
+                    <div
+                      className={
+                        fill.takerSide === Side.Bid
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }
+                    >
+                      {fill.takerSide}
+                    </div>
+                    <div>{fill.amount}</div>
+                    <div>{fill.price}</div>
+                    <SolanaExplorer address={fill.takerOoa.toBase58()} />
+                    <div>{fill.timestamp.toISOString()}</div>
+                  </div>
+                  <div
+                    key={fill.seqNum}
+                    className="grid grid-cols-6 gap-4 text-sm p-2 hover:bg-gray-800 rounded"
+                  >
+                    <div>${fill.makerClientOrderId}</div>
+                    <div
+                      className={
+                        fill.takerSide === Side.Ask
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }
+                    >
+                      {fill.takerSide === Side.Ask ? Side.Bid : Side.Ask}
+                    </div>
+                    <div>{fill.amount}</div>
+                    <div>{fill.price}</div>
+                    <SolanaExplorer address={fill.makerOoa!.toBase58()} />
+                    <div>{fill.timestamp.toISOString()}</div>
+                  </div>
+                </>
+              ))}
             </ScrollArea>
           ) : (
             <div className="text-center text-gray-400 py-8">
               {/* No trade history available */}
-              <span>Coming soon...</span>
+              <span>No order fills to be consumed</span>
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="fills">
-          <div className="text-center text-gray-400 py-8">
-            {/* No order fills to display */}
-            <span>Coming soon...</span>
-          </div>
         </TabsContent>
       </Tabs>
     </div>

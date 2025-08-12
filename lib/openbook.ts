@@ -11,9 +11,10 @@ import {
   baseLotsToUi,
   FillEvent,
   OutEvent,
+  EventType,
 } from "@openbook-dex/openbook-v2";
 import { PublicKey } from "@solana/web3.js";
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, BorshCoder, Program } from "@coral-xyz/anchor";
 import { OPENBOOK_MARKET_ADMIN, OPENBOOK_PROGRAM_ID } from "./utils";
 
 async function findAllMarkets(provider: AnchorProvider) {
@@ -302,6 +303,91 @@ export function getBooksideOrders(bookside: BookSide | undefined): Order[] {
   }
 
   return orders;
+}
+
+export enum Side {
+  Bid = "Bid",
+  Ask = "Ask",
+}
+
+export interface Event {
+  eventType: string;
+  takerSide: Side;
+  timestamp: Date;
+  makerOoa: PublicKey;
+  takerOoa: PublicKey;
+  price: number;
+  amount: number;
+  seqNum: number;
+  takerClientOrderId?: number;
+  makerClientOrderId?: number;
+}
+
+const getEventParsed = (market: Market, event: FillEvent | OutEvent): Event => {
+  return {
+    eventType: EventType[event.eventType],
+    takerSide: event.takerSide === 0 ? Side.Bid : Side.Ask,
+    timestamp: event.timestamp
+      ? new Date(event.timestamp.toNumber() * 1000)
+      : new Date(),
+    makerOoa: event.maker,
+    takerOoa: event.taker,
+    price: market.priceLotsToUi(event.price),
+    amount: event.quantity?.toNumber(),
+    seqNum: event.seqNum?.toNumber(),
+    takerClientOrderId: event.takerClientOrderId?.toNumber(),
+    makerClientOrderId: event.makerClientOrderId?.toNumber(),
+  };
+};
+
+export async function getRecentOrderFills(
+  marketSymbol: string,
+  openbookClient: OpenBookV2Client
+): Promise<Event[] | null | undefined> {
+  const marketData = await getMarketBySymbol(marketSymbol, openbookClient);
+
+  if (!marketData || !marketData.market) {
+    return null;
+  }
+
+  const market = await Market.load(openbookClient, marketData.market.pubkey);
+
+  // Load event queue which contains fill events (matched orders)
+  await market.loadEventHeap();
+  const events: (FillEvent | OutEvent)[] = [];
+
+  const iter = market.eventHeap!.rawEvents();
+
+  let result = iter.next();
+  while (!result.done) {
+    const event = result.value;
+
+    const buffer = Buffer.from([event.eventType].concat(event.padding));
+    switch (event.eventType) {
+      case EventType.Fill: {
+        const fillEvent = openbookClient.program.coder.types.decode<FillEvent>(
+          "FillEvent",
+          buffer
+        );
+        if (fillEvent) events.push(getEventParsed(market, fillEvent));
+        break;
+      }
+      case EventType.Out: {
+        const outEvent = openbookClient.program.coder.types.decode<OutEvent>(
+          "OutEvent",
+          buffer
+        );
+        if (outEvent) events.push(getEventParsed(market, outEvent));
+        break;
+      }
+      default:
+        throw "Unknown event type";
+    }
+
+    result = iter.next();
+  }
+
+  return events;
 }
 
 export async function getRecentTrades(
