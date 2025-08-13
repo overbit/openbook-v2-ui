@@ -12,6 +12,7 @@ import {
   FillEvent,
   OutEvent,
   EventType,
+  OpenOrdersAccount,
 } from "@openbook-dex/openbook-v2";
 import { PublicKey } from "@solana/web3.js";
 import { AnchorProvider, BorshCoder, Program } from "@coral-xyz/anchor";
@@ -82,7 +83,7 @@ export interface MarketData {
 let marketsCache: MarketData[] = [];
 
 // Store for open order accounts cache
-const ooasCache = new Map<string, OpenOrders>();
+const ooasCache = new Map<string, OpenOrdersAccount>();
 
 /**
  * Initialize and fetch all markets
@@ -310,40 +311,81 @@ export enum Side {
   Ask = "Ask",
 }
 
-export interface Event {
-  eventType: string;
-  takerSide: Side;
-  timestamp: Date;
-  makerOoa: PublicKey;
-  takerOoa: PublicKey;
-  price: number;
-  amount: number;
+export interface OrderEvent {
+  eventType: EventType;
   seqNum: number;
-  takerClientOrderId?: number;
-  makerClientOrderId?: number;
+  ownerClientOrderId?: number;
+  side: Side;
+  amount: number;
+  price?: number;
+  ownerOoa: PublicKey;
+  ownerAddress: PublicKey;
+  timestamp: Date;
 }
 
-const getEventParsed = (market: Market, event: FillEvent | OutEvent): Event => {
-  return {
-    eventType: EventType[event.eventType],
-    takerSide: event.takerSide === 0 ? Side.Bid : Side.Ask,
-    timestamp: event.timestamp
-      ? new Date(event.timestamp.toNumber() * 1000)
-      : new Date(),
-    makerOoa: event.maker,
-    takerOoa: event.taker,
-    price: market.priceLotsToUi(event.price),
-    amount: event.quantity?.toNumber(),
-    seqNum: event.seqNum?.toNumber(),
-    takerClientOrderId: event.takerClientOrderId?.toNumber(),
-    makerClientOrderId: event.makerClientOrderId?.toNumber(),
-  };
+const getOrderEvents = async (
+  market: Market,
+  event: FillEvent | OutEvent
+): Promise<OrderEvent[]> => {
+  const eventType = event.eventType === 0 ? EventType.Fill : EventType.Out;
+  const ooas = await getOoasByPublicKey(
+    eventType === EventType.Fill ? [event.taker, event.maker] : [event.owner],
+    market
+  );
+
+  switch (eventType) {
+    case EventType.Fill:
+      return [
+        {
+          eventType: EventType.Fill,
+          seqNum: event.seqNum?.toNumber(),
+          side: event.takerSide === 0 ? Side.Bid : Side.Ask,
+          ownerClientOrderId: event.takerClientOrderId?.toNumber(),
+          amount: event.quantity?.toNumber(),
+          price: market.priceLotsToUi(event.price),
+          ownerOoa: event.taker,
+          ownerAddress: ooas.get(event.taker)?.owner || PublicKey.default,
+          timestamp: event.timestamp
+            ? new Date(event.timestamp.toNumber() * 1000)
+            : new Date(),
+        },
+        {
+          eventType: EventType.Fill,
+          seqNum: event.seqNum?.toNumber(),
+          side: event.takerSide === 0 ? Side.Ask : Side.Bid,
+          ownerClientOrderId: event.makerClientOrderId?.toNumber(),
+          amount: event.quantity?.toNumber(),
+          price: market.priceLotsToUi(event.price),
+          ownerOoa: event.maker,
+          ownerAddress: ooas.get(event.maker)?.owner || PublicKey.default,
+          timestamp: event.timestamp
+            ? new Date(event.timestamp.toNumber() * 1000)
+            : new Date(),
+        },
+      ];
+    case EventType.Out:
+      return [
+        {
+          eventType: EventType.Out,
+          seqNum: event.seqNum?.toNumber(),
+          side: event.side === 0 ? Side.Bid : Side.Ask,
+          ownerOoa: event.owner,
+          ownerAddress: ooas.get(event.owner)?.owner || PublicKey.default,
+          amount: event.quantity?.toNumber(),
+          timestamp: event.timestamp
+            ? new Date(event.timestamp.toNumber() * 1000)
+            : new Date(),
+        },
+      ];
+    default:
+      throw new Error(`Unknown event type: ${eventType}`);
+  }
 };
 
-export async function getRecentOrderFills(
+export async function getRecentOrderEvents(
   marketSymbol: string,
   openbookClient: OpenBookV2Client
-): Promise<Event[] | null | undefined> {
+): Promise<OrderEvent[] | null | undefined> {
   const marketData = await getMarketBySymbol(marketSymbol, openbookClient);
 
   if (!marketData || !marketData.market) {
@@ -354,38 +396,43 @@ export async function getRecentOrderFills(
 
   // Load event queue which contains fill events (matched orders)
   await market.loadEventHeap();
-  const events: (FillEvent | OutEvent)[] = [];
+  const events: OrderEvent[] = [];
 
-  const iter = market.eventHeap!.rawEvents();
-
-  let result = iter.next();
-  while (!result.done) {
-    const event = result.value;
-
+  for (const event of market.eventHeap?.rawEvents() || []) {
     const buffer = Buffer.from([event.eventType].concat(event.padding));
-    switch (event.eventType) {
-      case EventType.Fill: {
-        const fillEvent = openbookClient.program.coder.types.decode<FillEvent>(
-          "FillEvent",
-          buffer
-        );
-        if (fillEvent) events.push(getEventParsed(market, fillEvent));
-        break;
+    try {
+      switch (event.eventType) {
+        case EventType.Fill: {
+          const fillEvent =
+            openbookClient.program.coder.types.decode<FillEvent>(
+              "FillEvent",
+              buffer
+            );
+          if (fillEvent) {
+            const parsedEvents = await getOrderEvents(market, fillEvent);
+            events.push(...parsedEvents);
+          }
+          break;
+        }
+        case EventType.Out: {
+          const outEvent = openbookClient.program.coder.types.decode<OutEvent>(
+            "OutEvent",
+            buffer
+          );
+          if (outEvent) {
+            const parsedEvents = await getOrderEvents(market, outEvent);
+            events.push(...parsedEvents);
+          }
+          break;
+        }
+        default:
+          throw "Unknown event type";
       }
-      case EventType.Out: {
-        const outEvent = openbookClient.program.coder.types.decode<OutEvent>(
-          "OutEvent",
-          buffer
-        );
-        if (outEvent) events.push(getEventParsed(market, outEvent));
-        break;
-      }
-      default:
-        throw "Unknown event type";
+    } catch (error) {
+      console.error("Error decoding event:", error);
     }
-
-    result = iter.next();
   }
+  console.log(`Loaded ${events.length} events for market ${marketSymbol}`);
 
   return events;
 }
@@ -528,7 +575,7 @@ function booksideOrderToOrderDetails(bookSideOrder: Order): OrderDetails {
 async function getOoasByPublicKey(
   ooasPublicKey: PublicKey[],
   market: Market
-): Promise<Map<PublicKey, OpenOrders>> {
+): Promise<Map<PublicKey, OpenOrdersAccount>> {
   const cacheMiss = ooasPublicKey.filter(
     (ooaPublicKey) => !ooasCache.has(ooaPublicKey.toBase58())
   );
@@ -541,10 +588,11 @@ async function getOoasByPublicKey(
         const ooaPublicKey = cacheMiss[i];
         const ooaAccount = ooasAccounts[i];
         if (ooaAccount) {
-          const ooa: OpenOrders = market.client.program.coder.accounts.decode(
-            "openOrdersAccount",
-            ooaAccount!.data
-          );
+          const ooa: OpenOrdersAccount =
+            market.client.program.coder.accounts.decode(
+              "openOrdersAccount",
+              ooaAccount!.data
+            );
           ooasCache.set(ooaPublicKey.toBase58(), ooa);
         } else {
           console.warn(
